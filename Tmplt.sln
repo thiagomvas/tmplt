@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tmplt.Core", "Tmplt.Core\Tmplt.Core.csproj", "{AF6D3E9C-8583-4F98-8219-CA6550291899}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tmplt.Cli", "Tmplt.Cli\Tmplt.Cli.csproj", "{F9978A23-393C-4094-A590-D7CD445E34D1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AF6D3E9C-8583-4F98-8219-CA6550291899}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF6D3E9C-8583-4F98-8219-CA6550291899}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF6D3E9C-8583-4F98-8219-CA6550291899}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF6D3E9C-8583-4F98-8219-CA6550291899}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9978A23-393C-4094-A590-D7CD445E34D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9978A23-393C-4094-A590-D7CD445E34D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9978A23-393C-4094-A590-D7CD445E34D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9978A23-393C-4094-A590-D7CD445E34D1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
