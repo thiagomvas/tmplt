@@ -8,6 +8,19 @@ namespace Tmplt.Core;
         public string Path { get; set; }
         public bool IsFolder { get; set; }
         public string Content { get; set; }
+        
+        /// <summary>
+        /// A variable that this item depends on.
+        /// </summary>
+        public string? DependsOnVariable { get; set; }
+        
+        /// <summary>
+        /// The value of the variable that this item depends on. This file will only be created if the variable is set to this value
+        /// </summary>
+        public string? VariableValue { get; set; }
+
+        public bool InvertVariable { get; set; } = false;
+        
 
 
         internal List<TemplateVariable> ParseVariables()

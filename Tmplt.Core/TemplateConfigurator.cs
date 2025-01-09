@@ -8,7 +8,7 @@ namespace Tmplt.Core;
 public class TemplateConfigurator
 {
     private readonly IInputProvider _inputProvider;
-    private readonly Dictionary<string, string> _preConfiguredVariables = new();
+    private readonly Dictionary<string, (string selectedValue, string replacement)> _preConfiguredVariables = new();
 
     public TemplateConfigurator(IInputProvider inputProvider)
     {
@@ -50,6 +50,21 @@ public class TemplateConfigurator
                 _inputProvider.ConfigureVariable(variable);
             }
         }
+        
+        // Configure item variable dependencies
+        foreach (var item in template.Items)
+        {
+            bool hasVariableDependency = _inputProvider.AskForConfirmation($"Does {item.Path} depend on a variable?");
+            if (hasVariableDependency)
+            {
+                var variableOptionsDict = template.Variables.Select((v, i) => new { Key = i + 1, Value = v.Name })
+                    .ToDictionary(x => x.Key, x => x.Value);
+                var variableIndex = _inputProvider.AskForChoice("Select the variable that this item depends on", variableOptionsDict);
+                item.DependsOnVariable = variableOptionsDict[variableIndex];
+                item.VariableValue = _inputProvider.AskForInput("What value should the variable have?");
+                item.InvertVariable = _inputProvider.AskForConfirmation("Should the variable value be inverted?(E.g., create if variable is NOT this value)");
+            }
+        }
 
         return template;
     }
@@ -68,12 +83,29 @@ public class TemplateConfigurator
 
         foreach (var item in template.Items)
         {
+            // If the item has a variable it depends on, check if it should be created
+            if (!string.IsNullOrWhiteSpace(item.DependsOnVariable))
+            {
+                // If inverted, check if the value is anything but the variable value, if it is the same value, skip this item.
+                if (item.InvertVariable)
+                {
+                    if(_preConfiguredVariables.TryGetValue(item.DependsOnVariable, out var value) 
+                       && string.Equals(value.selectedValue, item.VariableValue, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+                else // Otherwise, check if it is the same value. If it isn't, skip this item.
+                {
+                    if(!_preConfiguredVariables.TryGetValue(item.DependsOnVariable, out var value) 
+                       || !string.Equals(value.selectedValue, item.VariableValue, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+            }
             string itemPath = Path.Combine(targetPath, item.Path);
             foreach(var variable in template.Variables)
             {
                 if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
                 {
-                    itemPath = itemPath.Replace($"${{{{{variable.Name}}}}}$", value);
+                    itemPath = itemPath.Replace($"${{{{{variable.Name}}}}}$", value.replacement);
                 }
             }
 
@@ -101,7 +133,7 @@ public class TemplateConfigurator
         {
             if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
             {
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", value);
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", value.replacement);
                 continue;
             }
         }
@@ -117,9 +149,10 @@ public class TemplateConfigurator
             foreach (var variable in template.Variables)
             {
                 string replacement = string.Empty;
+                string selectedValue = string.Empty;
                 if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
                 {
-                    resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", value);
+                    resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", value.replacement);
                     continue;
                 }
 
@@ -128,6 +161,7 @@ public class TemplateConfigurator
                     // Ask for user input to decide on the conditional value
                     bool isTrue = _inputProvider.AskForConfirmation(variable.Name);
                     replacement = isTrue ? variable.Values[0] : variable.Values[1];
+                    selectedValue = isTrue.ToString();
                     resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
                 }
                 else if (variable.Type == VariableType.SingleLine)
@@ -150,11 +184,12 @@ public class TemplateConfigurator
 
                     var response = _inputProvider.AskForChoice(variable.Name, optionsDict);
                     replacement = variable.Values[response];
+                    selectedValue = optionsDict[response];
                     resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
                 }
 
                 if (!string.IsNullOrWhiteSpace(replacement))
-                    _preConfiguredVariables[variable.Name] = replacement;
+                    _preConfiguredVariables[variable.Name] = (selectedValue, replacement);
             }
         }
     }

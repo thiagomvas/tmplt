@@ -29,6 +29,34 @@ public class ConfigureCommands
         
         var resultPath = Path.Combine(Constants.AppDataPath, $"{name.ToLowerInvariant()}.json");
         File.WriteAllText(resultPath, json);
+
+        var table = new Table();
+        Console.WriteLine("Files in template: ");
+        table.SetHeader(new Row("Path", "Depends on Variable", "Variable Value", "Invert Variable"));
+        foreach (var item in res.Items)
+        {
+            table.AddRow(new Row(item.Path, item.DependsOnVariable, item.VariableValue, item.InvertVariable));
+        }
+        table.UseFormatting(TableFormatting.Minimalist)
+            .Write();
+
+        Console.WriteLine();
+        
+        Console.WriteLine("Variables in template: ");
+        table = new Table();
+        table.SetHeader(new Row("Name", "Type", "Options"));
+        foreach (var variable in res.Variables)
+        {
+            string options = variable.Type switch
+            {
+                VariableType.Enum => variable.Values[0],
+                VariableType.Conditional => "True / False",
+                _ => "N/A"
+            };
+            table.AddRow(new Row(variable.Name, variable.Type, options));
+        }
+        table.UseFormatting(TableFormatting.Minimalist)
+            .Write();
     }
     
     [Command(Description = "Delete a template.")]
