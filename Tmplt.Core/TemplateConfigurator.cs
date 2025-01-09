@@ -5,6 +5,7 @@ namespace Tmplt.Core;
 public class TemplateConfigurator
 {
     private readonly IInputProvider _inputProvider;
+    private readonly Dictionary<string, string> _preConfiguredVariables = new();
 
     public TemplateConfigurator(IInputProvider inputProvider)
     {
@@ -83,29 +84,31 @@ public class TemplateConfigurator
         string resultContent = item.Content;
         foreach (var variable in item.Variables)
         {
-            // if (variable.Type == VariableType.Replace)
-            // {
-            //     // Ask for user input for the replacement
-            //     string replacement = _inputProvider.AskForInput(variable.Name);
-            //     resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
-            // }
-            // else
+            string replacement = string.Empty;
+            if(_preConfiguredVariables.TryGetValue(variable.Name, out var value))
+            {
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", value);
+                continue;
+                
+            }
             if (variable.Type == VariableType.Conditional)
             {
                 // Ask for user input to decide on the conditional value
                 bool isTrue = _inputProvider.AskForConfirmation(variable.Name);
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$",
-                    isTrue ? variable.Values[0] : variable.Values[1]);
+                replacement = isTrue ? variable.Values[0] : variable.Values[1];
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
             } 
             else if (variable.Type == VariableType.SingleLine)
             {
                 var response = _inputProvider.AskForInput(variable.Name);
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", response);
+                replacement = response;
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
             }
             else if (variable.Type == VariableType.Multiline)
             {
                 var response = _inputProvider.AskForInput(variable.Name, true);
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", response);
+                replacement = response;
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
             }
             else if (variable.Type == VariableType.Enum)
             {
@@ -113,9 +116,12 @@ public class TemplateConfigurator
                 var optionsDict = options.Select((o, i) => new { Key = i + 1, Value = o }).ToDictionary(x => x.Key, x => x.Value);
 
                 var response = _inputProvider.AskForChoice(variable.Name, optionsDict);
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", variable.Values[response]);
-
+                replacement = variable.Values[response];
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
             }
+            
+            if(!string.IsNullOrWhiteSpace(replacement))
+                _preConfiguredVariables[variable.Name] = replacement;
         }
 
         return resultContent;

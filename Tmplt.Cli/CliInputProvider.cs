@@ -4,6 +4,7 @@ namespace Tmplt.Cli;
 public class CliInputProvider : IInputProvider
 {
     private readonly IConsoleReader _consoleReader;
+    private HashSet<string> _configuredVariables = new();
 
     public CliInputProvider(IConsoleReader consoleReader)
     {
@@ -106,6 +107,10 @@ public class CliInputProvider : IInputProvider
     /// </summary>
     public TemplateVariable ConfigureVariable(TemplateVariable variable)
     {
+        if (_configuredVariables.Contains(variable.Name))
+        {
+            return variable;
+        }
         var type = AskForEnum<VariableType>($"Select a type for the variable '{variable.Name}'");
 
         variable.Type = type;
@@ -137,6 +142,7 @@ public class CliInputProvider : IInputProvider
             }
         }
 
+        _configuredVariables.Add(variable.Name);
         return variable;
     }
 }
