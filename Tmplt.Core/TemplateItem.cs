@@ -13,6 +13,15 @@ namespace Tmplt.Core;
         public void ParseVariables()
         {
             var regex = VariableRegex();
+            foreach (Match match in regex.Matches(Path))
+            {
+                if (match.Success)
+                {
+                    // Capture the inner part of the ${{ ... }}$ expression
+                    var variableName = match.Groups[1].Value; // This is the text between ${{ and }}$
+                    Variables.Add(TemplateVariable.Create(variableName));
+                }
+            }
             foreach (Match match in regex.Matches(Content))
             {
                 if (match.Success)

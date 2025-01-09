@@ -57,21 +57,30 @@ public class TemplateConfigurator
     {
         if (!Directory.Exists(targetPath))
             Directory.CreateDirectory(targetPath);
+        
+        PreconfigureVariableReplacements(template);
 
         foreach (var item in template.Items)
         {
             string itemPath = Path.Combine(targetPath, item.Path);
+            foreach(var variable in item.Variables)
+            {
+                if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
+                {
+                    itemPath = itemPath.Replace($"${{{{{variable.Name}}}}}$", value);
+                }
+            }
 
             if (item.IsFolder)
             {
                 Directory.CreateDirectory(itemPath);
-                Console.WriteLine($"Created directory: {item.Path}");
+                Console.WriteLine($"Created directory: {itemPath}");
             }
             else
             {
                 string content = ProcessItemContent(item);
                 File.WriteAllText(itemPath, content);
-                Console.WriteLine($"Created file: {item.Path}");
+                Console.WriteLine($"Created file: {itemPath}");
             }
         }
     }
@@ -84,46 +93,63 @@ public class TemplateConfigurator
         string resultContent = item.Content;
         foreach (var variable in item.Variables)
         {
-            string replacement = string.Empty;
-            if(_preConfiguredVariables.TryGetValue(variable.Name, out var value))
+            if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
             {
                 resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", value);
                 continue;
-                
             }
-            if (variable.Type == VariableType.Conditional)
-            {
-                // Ask for user input to decide on the conditional value
-                bool isTrue = _inputProvider.AskForConfirmation(variable.Name);
-                replacement = isTrue ? variable.Values[0] : variable.Values[1];
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
-            } 
-            else if (variable.Type == VariableType.SingleLine)
-            {
-                var response = _inputProvider.AskForInput(variable.Name);
-                replacement = response;
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
-            }
-            else if (variable.Type == VariableType.Multiline)
-            {
-                var response = _inputProvider.AskForInput(variable.Name, true);
-                replacement = response;
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
-            }
-            else if (variable.Type == VariableType.Enum)
-            {
-                var options = variable.Values[0].Split(',').Select(o => o.Trim()).ToArray();
-                var optionsDict = options.Select((o, i) => new { Key = i + 1, Value = o }).ToDictionary(x => x.Key, x => x.Value);
-
-                var response = _inputProvider.AskForChoice(variable.Name, optionsDict);
-                replacement = variable.Values[response];
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
-            }
-            
-            if(!string.IsNullOrWhiteSpace(replacement))
-                _preConfiguredVariables[variable.Name] = replacement;
         }
 
         return resultContent;
+    }
+
+    private void PreconfigureVariableReplacements(Template template)
+    {
+        foreach (var item in template.Items)
+        {
+            string resultContent = item.Content;
+            foreach (var variable in item.Variables)
+            {
+                string replacement = string.Empty;
+                if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
+                {
+                    resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", value);
+                    continue;
+                }
+
+                if (variable.Type == VariableType.Conditional)
+                {
+                    // Ask for user input to decide on the conditional value
+                    bool isTrue = _inputProvider.AskForConfirmation(variable.Name);
+                    replacement = isTrue ? variable.Values[0] : variable.Values[1];
+                    resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
+                }
+                else if (variable.Type == VariableType.SingleLine)
+                {
+                    var response = _inputProvider.AskForInput(variable.Name);
+                    replacement = response;
+                    resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
+                }
+                else if (variable.Type == VariableType.Multiline)
+                {
+                    var response = _inputProvider.AskForInput(variable.Name, true);
+                    replacement = response;
+                    resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
+                }
+                else if (variable.Type == VariableType.Enum)
+                {
+                    var options = variable.Values[0].Split(',').Select(o => o.Trim()).ToArray();
+                    var optionsDict = options.Select((o, i) => new { Key = i + 1, Value = o })
+                        .ToDictionary(x => x.Key, x => x.Value);
+
+                    var response = _inputProvider.AskForChoice(variable.Name, optionsDict);
+                    replacement = variable.Values[response];
+                    resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
+                }
+
+                if (!string.IsNullOrWhiteSpace(replacement))
+                    _preConfiguredVariables[variable.Name] = replacement;
+            }
+        }
     }
 }
