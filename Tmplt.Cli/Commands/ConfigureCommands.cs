@@ -43,9 +43,9 @@ public class ConfigureCommands
         var templates = Directory.GetFiles(path, "*.json")
             .Select(f => File.ReadAllText(f))
             .Select(j => Template.Deserialize(j));
-        foreach (var template in templates)
+        foreach (var template in templates.Where(t => t is not null))
         {
-            Console.WriteLine($"{template.Name} - {template.Description}");
+            Console.WriteLine($"{template!.Name} - {template.Description}");
         }
     }
 }

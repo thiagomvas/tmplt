@@ -31,7 +31,7 @@ public class TemplateConfigurator
 
     public Template ConfigureTemplateFromDirectory(string directory)
     {
-        var template = new TemplateManager().FromDirectory(Path.GetDirectoryName(directory), directory);
+        var template = new TemplateManager().FromDirectory("unnamed", directory);
 
         foreach (var item in template.Items)
         {

@@ -24,7 +24,7 @@ public class CreateCommands
         }
         
         var template = Template.Deserialize(File.ReadAllText(path));
-        
-        _templateConfigurator.CreateProjectFromTemplate(root, template);
+        if(template != null)
+            _templateConfigurator.CreateProjectFromTemplate(root, template);
     }
 }

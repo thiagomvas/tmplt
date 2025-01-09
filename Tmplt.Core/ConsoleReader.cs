@@ -4,7 +4,7 @@ namespace Tmplt.Core;
 
 public class ConsoleReader : IConsoleReader
 {
-    public string ReadLine() => Console.ReadLine();
+    public string ReadLine() => Console.ReadLine()!;
 
     public string ReadMultiline()
     {
