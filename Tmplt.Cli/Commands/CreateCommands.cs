@@ -12,6 +12,7 @@ public class CreateCommands
         _templateConfigurator = templateConfigurator;
     }
     
+    [Command(Description = "Create a project from a template.")]
     public void Create(
         [Argument(Order = 0, Description = "The name of the template")] string name, 
         [Argument(Order = 1, Description = "The root path used to begin creating on. NOTE: It will copy the exact structure into root, overriding any existing files.")] string root)

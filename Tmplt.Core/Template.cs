@@ -9,6 +9,7 @@ public class Template
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
     public List<TemplateItem> Items { get; set; } = new();
+    public List<string> Tags { get; set; } = new();
     
     public string Serialize()
     {
