@@ -8,8 +8,18 @@ public class Template
 {
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
+    public List<TemplateVariable> Variables { get; set; } = new();
     public List<TemplateItem> Items { get; set; } = new();
     public List<string> Tags { get; set; } = new();
+
+    public void ParseVariables()
+    {
+        foreach(var item in Items)
+            Variables.AddRange(item.ParseVariables());
+
+        Variables = Variables.DistinctBy(v => v.Name)
+            .ToList();
+    }
     
     public string Serialize()
     {

@@ -8,10 +8,11 @@ namespace Tmplt.Core;
         public string Path { get; set; }
         public bool IsFolder { get; set; }
         public string Content { get; set; }
-        public List<TemplateVariable> Variables { get; set; } = new();
 
-        public void ParseVariables()
+
+        internal List<TemplateVariable> ParseVariables()
         {
+            var result = new List<TemplateVariable>();
             var regex = VariableRegex();
             foreach (Match match in regex.Matches(Path))
             {
@@ -19,7 +20,7 @@ namespace Tmplt.Core;
                 {
                     // Capture the inner part of the ${{ ... }}$ expression
                     var variableName = match.Groups[1].Value; // This is the text between ${{ and }}$
-                    Variables.Add(TemplateVariable.Create(variableName));
+                    result.Add(TemplateVariable.Create(variableName));
                 }
             }
             foreach (Match match in regex.Matches(Content))
@@ -28,9 +29,11 @@ namespace Tmplt.Core;
                 {
                     // Capture the inner part of the ${{ ... }}$ expression
                     var variableName = match.Groups[1].Value; // This is the text between ${{ and }}$
-                    Variables.Add(TemplateVariable.Create(variableName));
+                    result.Add(TemplateVariable.Create(variableName));
                 }
             }
+
+            return result;
         }
 
         public TemplateItem()

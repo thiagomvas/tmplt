@@ -2,6 +2,9 @@ using Tmplt.Core.Abstractions;
 
 namespace Tmplt.Core;
 
+/// <summary>
+/// Responsible for configuring templates and creating a project from them.
+/// </summary>
 public class TemplateConfigurator
 {
     private readonly IInputProvider _inputProvider;
@@ -29,20 +32,22 @@ public class TemplateConfigurator
     public void CreateProjectFromTemplate(string targetPath, Template template) =>
         CreateFromTemplateDynamic(targetPath, template);
 
+    /// <summary>
+    /// Creates a template from a directory and returns it.
+    /// </summary>
+    /// <param name="directory">The root directory to configure a template from.</param>
+    /// <returns>An unnamed template from a directory.</returns>
     public Template ConfigureTemplateFromDirectory(string directory)
     {
         var template = new TemplateManager().FromDirectory("unnamed", directory);
+        template.ParseVariables();
 
-        foreach (var item in template.Items)
+        foreach (var variable in template.Variables)
         {
-            item.ParseVariables();
-            foreach (var variable in item.Variables)
+            if (variable.Type == VariableType.Undefined)
             {
-                if (variable.Type == VariableType.Undefined)
-                {
-                    // Use IInputProvider to configure the variable
-                    _inputProvider.ConfigureVariable(variable);
-                }
+                // Use IInputProvider to configure the variable
+                _inputProvider.ConfigureVariable(variable);
             }
         }
 
@@ -58,12 +63,13 @@ public class TemplateConfigurator
         if (!Directory.Exists(targetPath))
             Directory.CreateDirectory(targetPath);
         
+        // Preconfigure the variables with user input before replacing to make sure that all variables are replaced, including on file path.
         PreconfigureVariableReplacements(template);
 
         foreach (var item in template.Items)
         {
             string itemPath = Path.Combine(targetPath, item.Path);
-            foreach(var variable in item.Variables)
+            foreach(var variable in template.Variables)
             {
                 if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
                 {
@@ -78,7 +84,7 @@ public class TemplateConfigurator
             }
             else
             {
-                string content = ProcessItemContent(item);
+                string content = ProcessItemContent(template, item);
                 File.WriteAllText(itemPath, content);
                 Console.WriteLine($"Created file: {itemPath}");
             }
@@ -88,10 +94,10 @@ public class TemplateConfigurator
     /// <summary>
     /// Processes the item content, replacing variables with user input.
     /// </summary>
-    private string ProcessItemContent(TemplateItem item)
+    private string ProcessItemContent(Template template, TemplateItem item)
     {
         string resultContent = item.Content;
-        foreach (var variable in item.Variables)
+        foreach (var variable in template.Variables)
         {
             if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
             {
@@ -108,7 +114,7 @@ public class TemplateConfigurator
         foreach (var item in template.Items)
         {
             string resultContent = item.Content;
-            foreach (var variable in item.Variables)
+            foreach (var variable in template.Variables)
             {
                 string replacement = string.Empty;
                 if (_preConfiguredVariables.TryGetValue(variable.Name, out var value))
