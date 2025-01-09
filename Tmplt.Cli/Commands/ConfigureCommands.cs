@@ -13,11 +13,13 @@ public class ConfigureCommands
     }
     public void New(
         [Argument(Order = 0, Description = "The name of the template")] string name, 
-        [Argument(Order = 1, Description = "The root path used to begin configuring the template.")] string root)
+        [Argument(Order = 1, Description = "The root path used to begin configuring the template.")] string root,
+        [Option(Description = "The description of the template.")] string description = "")
     {
         Console.WriteLine($"Configuring {root}");
         var res = _templateConfigurator.ConfigureTemplateFromDirectory(root);
         res.Name = name;
+        res.Description = description;
         var json = res.Serialize();
         
         var resultPath = Path.Combine(Constants.AppDataPath, $"{name.ToLowerInvariant()}.json");
