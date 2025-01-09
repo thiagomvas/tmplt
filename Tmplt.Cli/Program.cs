@@ -1,18 +1,24 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using Cocona;
+using Microsoft.Extensions.DependencyInjection;
 using Tmplt.Cli;
+using Tmplt.Cli.Commands;
 using Tmplt.Core;
 using Tmplt.Core.Abstractions;
-using Tmplt.Core.Converters;
 
-IConsoleReader consoleReader = new ConsoleReader();
-IInputProvider inputProvider = new CliInputProvider(consoleReader);
-var templateConfigurator = new TemplateConfigurator(inputProvider);
-var templateManager = new TemplateManager();
+// Ensure config folder exists in application path
+var appDataPath = Constants.AppDataPath;
+if (!Directory.Exists(appDataPath))
+    Directory.CreateDirectory(appDataPath);
 
-string templateDirectory = "/home/thiagomv/test/";
-Template template = templateConfigurator.ConfigureTemplateFromDirectory(templateDirectory);
 
-Console.ReadKey();
-Console.Clear();
-templateConfigurator.CreateProjectFromTemplate("/home/thiagomv/result", template);
+var builder = CoconaApp.CreateBuilder();
+builder.Services.AddScoped<IInputProvider, CliInputProvider>();
+builder.Services.AddScoped<IConsoleReader, ConsoleReader>();
+builder.Services.AddScoped<TemplateConfigurator>();
+
+var app = builder.Build();
+
+app.AddSubCommand("config", x => x.AddCommands<ConfigureCommands>());
+app.AddSubCommand("create", x => x.AddCommands<CreateCommands>());
+
+app.Run();

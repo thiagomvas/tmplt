@@ -30,7 +30,7 @@ public class TemplateConfigurator
 
     public Template ConfigureTemplateFromDirectory(string directory)
     {
-        var template = new TemplateManager().FromDirectory(directory);
+        var template = new TemplateManager().FromDirectory(Path.GetDirectoryName(directory), directory);
 
         foreach (var item in template.Items)
         {
@@ -83,18 +83,38 @@ public class TemplateConfigurator
         string resultContent = item.Content;
         foreach (var variable in item.Variables)
         {
-            if (variable.Type == VariableType.Replace)
-            {
-                // Ask for user input for the replacement
-                string replacement = _inputProvider.AskForInput(variable.Name);
-                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
-            }
-            else if (variable.Type == VariableType.Conditional)
+            // if (variable.Type == VariableType.Replace)
+            // {
+            //     // Ask for user input for the replacement
+            //     string replacement = _inputProvider.AskForInput(variable.Name);
+            //     resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", replacement);
+            // }
+            // else
+            if (variable.Type == VariableType.Conditional)
             {
                 // Ask for user input to decide on the conditional value
                 bool isTrue = _inputProvider.AskForConfirmation(variable.Name);
                 resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$",
-                    isTrue ? variable.TrueValue : variable.FalseValue);
+                    isTrue ? variable.Values[0] : variable.Values[1]);
+            } 
+            else if (variable.Type == VariableType.SingleLine)
+            {
+                var response = _inputProvider.AskForInput(variable.Name);
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", response);
+            }
+            else if (variable.Type == VariableType.Multiline)
+            {
+                var response = _inputProvider.AskForInput(variable.Name, true);
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", response);
+            }
+            else if (variable.Type == VariableType.Enum)
+            {
+                var options = variable.Values[0].Split(',').Select(o => o.Trim()).ToArray();
+                var optionsDict = options.Select((o, i) => new { Key = i + 1, Value = o }).ToDictionary(x => x.Key, x => x.Value);
+
+                var response = _inputProvider.AskForChoice(variable.Name, optionsDict);
+                resultContent = resultContent.Replace($"${{{{{variable.Name}}}}}$", variable.Values[response]);
+
             }
         }
 

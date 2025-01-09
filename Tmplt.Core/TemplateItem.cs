@@ -24,6 +24,13 @@ namespace Tmplt.Core;
             }
         }
 
+        public TemplateItem()
+        {
+            Path = "";
+            IsFolder = false;
+            Content = "";
+        }
+
         public TemplateItem(string path)
         {
             Path = path;

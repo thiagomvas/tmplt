@@ -3,6 +3,8 @@ namespace Tmplt.Core;
 public enum VariableType
 {
     Undefined,
-    Replace,
     Conditional,
+    SingleLine,
+    Multiline,
+    Enum,
 }

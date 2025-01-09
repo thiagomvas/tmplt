@@ -10,6 +10,12 @@ public class CliInputProvider : IInputProvider
         _consoleReader = consoleReader;
     }
 
+    public T AskForEnum<T>(string prompt) where T : Enum
+    {
+        var values = Enum.GetValues(typeof(T)).Cast<T>().ToList();
+        var options = values.ToDictionary(v => v, v => v.ToString());
+        return AskForChoice(prompt, options);
+    }
     /// <summary>
     /// Displays a multiple-choice prompt and returns the selected option.
     /// </summary>
@@ -100,13 +106,7 @@ public class CliInputProvider : IInputProvider
     /// </summary>
     public TemplateVariable ConfigureVariable(TemplateVariable variable)
     {
-        var type = AskForChoice<VariableType>(
-            $"Please select a type for the variable '{variable.Name}':",
-            new Dictionary<VariableType, string>
-            {
-                { VariableType.Replace, "Replace" },
-                { VariableType.Conditional, "Conditional" }
-            });
+        var type = AskForEnum<VariableType>($"Select a type for the variable '{variable.Name}'");
 
         variable.Type = type;
 
@@ -116,10 +116,25 @@ public class CliInputProvider : IInputProvider
             Console.ForegroundColor = ConsoleColor.Magenta;
             Console.WriteLine($"--- Configure the conditional replacement for '{variable.Name}': ---");
             Console.ResetColor();
+            variable.Values = new string[2];
             Console.WriteLine($"If true, replace with (Enter on empty line ends reading): ");
-            variable.TrueValue = _consoleReader.ReadMultiline();
+            variable.Values[0] = _consoleReader.ReadMultiline();
             Console.WriteLine($"If false, replace with (Enter on empty line ends reading): ");
-            variable.FalseValue = _consoleReader.ReadMultiline();
+            variable.Values[1] = _consoleReader.ReadMultiline();
+        }
+        else if (type == VariableType.Enum)
+        {
+            var options = AskForInput("Comma-separated list of Enum options");
+            var optionArr = options.Split(',').Select(o => o.Trim()).ToArray();
+            var optionCount = optionArr.Length;
+            variable.Values = new string[optionCount + 1];
+            variable.Values[0] = options;
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.WriteLine($"--- Configure the Enum options replacement for '{variable.Name}': ---");
+            for (int i = 1; i <= optionCount; i++)
+            {
+                variable.Values[i] = AskForInput(optionArr[i - 1]);
+            }
         }
 
         return variable;

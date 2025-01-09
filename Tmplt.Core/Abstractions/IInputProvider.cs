@@ -21,4 +21,6 @@ public interface IInputProvider
     /// Provides a dynamic way to configure a variable (e.g., Replace or Conditional).
     /// </summary>
     TemplateVariable ConfigureVariable(TemplateVariable variable);
+
+    T AskForEnum<T>(string prompt) where T : Enum;
 }

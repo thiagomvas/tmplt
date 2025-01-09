@@ -22,14 +22,14 @@ public class TemplateManager
             }
         }
 
-        public Template FromDirectory(string directory)
+        public Template FromDirectory(string name, string directory)
         {
             if (!Directory.Exists(directory))
                 throw new DirectoryNotFoundException($"The directory '{directory}' does not exist.");
 
             var template = new Template
             {
-                Name = new DirectoryInfo(directory).Name
+                Name = name
             };
 
             var items = new List<TemplateItem>();

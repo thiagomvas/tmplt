@@ -5,10 +5,18 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>tmplt</ToolCommandName>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <Version>0.0.1</Version>
     </PropertyGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Tmplt.Core\Tmplt.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Cocona" Version="2.2.0" />
     </ItemGroup>
 
 </Project>
