@@ -20,7 +20,7 @@ tmplt config new <template-name> <path-to-folder>
 ```bash
 tmplt create <template-name> <path-to-output>
 ```
-> ![IMPORTANT]
+> [!IMPORTANT]
 > Tmplt will create the files **in that directory** rather than creating a new directory with the template's name. Files can and will be overwritten if they already exist.
 
 The command will prompt you to fill in the variables you defined in the template. After filling in the variables, the project will be generated.
