@@ -17,10 +17,21 @@ public class ConfigureCommands
     {
         Console.WriteLine($"Configuring {root}");
         var res = _templateConfigurator.ConfigureTemplateFromDirectory(root);
+        res.Name = name;
         var json = res.Serialize();
         
         var resultPath = Path.Combine(Constants.AppDataPath, $"{name.ToLowerInvariant()}.json");
         File.WriteAllText(resultPath, json);
+    }
+    
+    public void Delete(
+        [Argument(Order = 0, Description = "The name of the template")] string name)
+    {
+        var path = Path.Combine(Constants.AppDataPath, $"{name.ToLowerInvariant()}.json");
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
     }
 
     public void List()
