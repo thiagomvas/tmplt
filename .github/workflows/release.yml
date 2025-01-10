@@ -1,0 +1,98 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on tags like v1.0, v2.3, etc.
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest] # Builds for both Linux and Windows
+        platform: [linux-x64, win-x64]     # Corresponding .NET runtime identifiers
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Setup .NET SDK
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.x' 
+
+      # Restore dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Build the project
+      - name: Build project
+        run: dotnet publish ./Tmplt.Cli/Tmplt.Cli.csproj -c Release -r ${{ matrix.platform }} --self-contained true -p:PublishSingleFile=true -o out/${{ matrix.platform }}
+
+      # Upload the build artifact
+      - name: Archive executable
+        run: zip -j -r Tmplt.Cli-${{ matrix.platform }}.zip out/${{ matrix.platform }}
+        shell: bash
+
+      # Upload artifact for further use
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Tmplt.Cli-${{ matrix.platform }}.zip
+          path: Tmplt.Cli-${{ matrix.platform }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Download build artifacts
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: Tmplt.Cli-win-x64.zip
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: Tmplt.Cli-linux-x64.zip
+
+      # Create a GitHub release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      # Upload artifacts to release
+      - name: Upload Windows Build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Tmplt.Cli-win-x64.zip
+          asset_name: Tmplt.Cli-win-x64.zip
+          asset_content_type: application/zip
+
+      - name: Upload Linux Build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Tmplt.Cli-linux-x64.zip
+          asset_name: Tmplt.Cli-linux-x64.zip
+          asset_content_type: application/zip
