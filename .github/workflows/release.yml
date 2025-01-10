@@ -12,13 +12,8 @@ on:
         default: 'v1.0.0'
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest] # Builds for both Linux and Windows
-        platform: [linux-x64, win-x64]     # Corresponding .NET runtime identifiers
+  build-linux:
+    runs-on: ubuntu-latest
 
     steps:
       # Checkout the repository
@@ -35,26 +30,62 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      # Build the project as a single file executable
+      # Build the project for Linux as a single file executable
       - name: Build project
-        run: dotnet publish ./Tmplt.Cli/Tmplt.Cli.csproj -c Release -r ${{ matrix.platform }} --self-contained true -p:PublishSingleFile=true -o out/${{ matrix.platform }}
+        run: dotnet publish ./Tmplt.Cli/Tmplt.Cli.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o out/linux-x64
 
       # Archive the single-file executable
       - name: Archive executable
         run: |
-          cd out/${{ matrix.platform }}
-          zip -j ../../Tmplt.Cli-${{ matrix.platform }}.zip *
+          cd out/linux-x64
+          zip -j ../../Tmplt.Cli-linux-x64.zip *
         shell: bash
 
       # Upload the build artifact for release job
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: Tmplt.Cli-${{ matrix.platform }}.zip
-          path: Tmplt.Cli-${{ matrix.platform }}.zip
+          name: Tmplt.Cli-linux-x64.zip
+          path: Tmplt.Cli-linux-x64.zip
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Setup .NET SDK
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.x' # Update to your target .NET version
+
+      # Restore dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Build the project for Windows as a single file executable
+      - name: Build project
+        run: dotnet publish ./Tmplt.Cli/Tmplt.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o out/win-x64
+
+      # Archive the single-file executable
+      - name: Archive executable
+        run: |
+          cd out/win-x64
+          Compress-Archive -Path * -DestinationPath ../../Tmplt.Cli-win-x64.zip
+        shell: pwsh
+
+      # Upload the build artifact for release job
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Tmplt.Cli-win-x64.zip
+          path: Tmplt.Cli-win-x64.zip
 
   release:
-    needs: build
+    needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
 
     steps:
