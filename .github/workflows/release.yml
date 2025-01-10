@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*' # Triggers on tags like v1.0, v2.3, etc.
+  workflow_dispatch: # Allows manual dispatch
+    inputs:
+      tag_name:
+        description: 'Tag name to release' # Provide the tag name for manual dispatch
+        required: true
+        default: 'v1.0.0'
 
 jobs:
   build:
@@ -23,22 +29,24 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.x' 
+          dotnet-version: '7.x' # Update to your target .NET version
 
       # Restore dependencies
       - name: Restore dependencies
         run: dotnet restore
 
-      # Build the project
+      # Build the project as a single file executable
       - name: Build project
         run: dotnet publish ./Tmplt.Cli/Tmplt.Cli.csproj -c Release -r ${{ matrix.platform }} --self-contained true -p:PublishSingleFile=true -o out/${{ matrix.platform }}
 
-      # Upload the build artifact
+      # Archive the single-file executable
       - name: Archive executable
-        run: zip -j -r Tmplt.Cli-${{ matrix.platform }}.zip out/${{ matrix.platform }}
+        run: |
+          cd out/${{ matrix.platform }}
+          zip -j ../../Tmplt.Cli-${{ matrix.platform }}.zip *
         shell: bash
 
-      # Upload artifact for further use
+      # Upload the build artifact for release job
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
@@ -71,8 +79,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          release_name: Release ${{ github.event.inputs.tag_name || github.ref_name }}
           draft: false
           prerelease: false
 
