@@ -1,20 +1,38 @@
 
 #include "Condition.h"
+#include "Template.h"
 #include "TemplateEngine.h"
+#include "TemplateFile.h"
 #include "TemplateVariable.h"
 #include "tmplt.h"
 #include <iostream>
 #include <ostream>
 
 int main() {
+  tmplt::Template tmp;
+
+  tmp.name = "Template Name";
+  tmp.description = "Template Description";
+
   tmplt::TemplateEngine engine;
-  std::string buffer = "Hello ${{Name}}$, you are ${{Age}}$ years old";
+  auto vars = engine.findVariablesInBuffer(
+      "Hello ${{Name}}$, You are ${{Age}}$ years old");
 
-  auto vars = engine.findVariablesInBuffer(buffer);
-
-  // Print out the found variables
-  std::cout << "Variables found in the buffer:\n";
+  std::vector<std::string> varNames;
   for (const auto &pair : vars) {
-    std::cout << "Variable name: " << pair.first << std::endl;
+    varNames.push_back(pair.first);
   }
+
+  tmplt::TemplateFile file;
+  file.relativePath = "bar.txt";
+  file.contentPath = ".config/bar.txt";
+  file.variableNames = varNames;
+
+  tmp.files.push_back(file);
+  tmp.variables = vars;
+
+  std::cout << tmplt::Template::deserialize(tmp.serialize()).serialize()
+            << std::endl;
+
+  return 0;
 }

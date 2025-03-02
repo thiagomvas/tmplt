@@ -4,10 +4,10 @@
 namespace tmplt {
 
 TemplateVariable::TemplateVariable()
-    : name(""), description(""), type(VariableType::Null) {}
+    : name(" "), description(" "), type(VariableType::Null) {}
 
 TemplateVariable::TemplateVariable(const std::string &name)
-    : name(name), description(""), type(VariableType::Null) {}
+    : name(name), description(" "), type(VariableType::Null) {}
 
 TemplateVariable::TemplateVariable(const std::string &name,
                                    const std::string &description)
@@ -39,30 +39,65 @@ TemplateVariable TemplateVariable::deserialize(const std::string &buffer) {
   std::istringstream stream(buffer);
   std::string line;
 
-  // Read name, description, type
-  std::getline(stream, line); // skip VARIABLE_HEADER
+  // Ensure the first line is VARIABLE_HEADER
+  if (!std::getline(stream, line) || line != VARIABLE_HEADER) {
+    throw std::runtime_error("Invalid variable header: " + line);
+  }
 
-  std::getline(stream, line);
-  tv.name = line.substr(6); // "name: <name>"
+  // Read name
+  if (std::getline(stream, line) && line.rfind("name: ", 0) == 0) {
+    tv.name = line.substr(6);
+  } else {
+    throw std::runtime_error("Invalid or missing 'name' field");
+  }
 
-  std::getline(stream, line);
-  tv.description = line.substr(12); // "description: <description>"
+  // Read description
+  if (std::getline(stream, line) && line.rfind("description: ", 0) == 0) {
+    tv.description = line.substr(12);
+  } else {
+    throw std::runtime_error("Invalid or missing 'description' field");
+  }
 
-  std::getline(stream, line);
-  tv.type =
-      static_cast<VariableType>(std::stoi(line.substr(6))); // "type: <type>"
+  // Read type
+  if (std::getline(stream, line) && line.rfind("type: ", 0) == 0) {
+    try {
+      tv.type = static_cast<VariableType>(std::stoi(line.substr(6)));
+    } catch (...) {
+      throw std::runtime_error("Invalid 'type' value");
+    }
+  } else {
+    throw std::runtime_error("Invalid or missing 'type' field");
+  }
 
   // Read optional condition block
-  if (std::getline(stream, line) &&
-      line.find("condition:") != std::string::npos) {
+  if (std::getline(stream, line) && line == "condition:") {
     Condition condition;
-    std::getline(stream, line);
-    condition.variableName = line.substr(15); // "  variableName: <name>"
-    std::getline(stream, line);
-    condition.expectedValue = line.substr(17); // "  expectedValue: <value>"
-    std::getline(stream, line);
-    condition.type = static_cast<ConditionType>(
-        std::stoi(line.substr(17))); // "  conditionType: <type>"
+
+    if (std::getline(stream, line) && line.rfind("  variableName: ", 0) == 0) {
+      condition.variableName = line.substr(15);
+    } else {
+      throw std::runtime_error(
+          "Invalid or missing 'variableName' in condition");
+    }
+
+    if (std::getline(stream, line) && line.rfind("  expectedValue: ", 0) == 0) {
+      condition.expectedValue = line.substr(17);
+    } else {
+      throw std::runtime_error(
+          "Invalid or missing 'expectedValue' in condition");
+    }
+
+    if (std::getline(stream, line) && line.rfind("  conditionType: ", 0) == 0) {
+      try {
+        condition.type = static_cast<ConditionType>(std::stoi(line.substr(17)));
+      } catch (...) {
+        throw std::runtime_error("Invalid 'conditionType' value");
+      }
+    } else {
+      throw std::runtime_error(
+          "Invalid or missing 'conditionType' in condition");
+    }
+
     tv.condition = condition;
   }
 
