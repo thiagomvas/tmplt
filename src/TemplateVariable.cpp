@@ -20,11 +20,10 @@ TemplateVariable::TemplateVariable(const std::string &name,
 
 std::string TemplateVariable::serialize() const {
   std::stringstream result;
-  result << VARIABLE_HEADER << "\n"; // Use the constant header
+  result << VARIABLE_HEADER << "\n";
   result << "name: " << name << "\n";
   result << "description: " << description << "\n";
-  result << "type: " << std::to_string(static_cast<int>(type))
-         << "\n"; // Assuming type can be cast to int
+  result << "type: " << std::to_string(static_cast<int>(type)) << "\n";
   if (condition) {
     result << "condition:\n";
     result << "  variableName: " << condition->variableName << "\n";
