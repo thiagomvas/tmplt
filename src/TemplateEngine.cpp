@@ -3,6 +3,7 @@
 #include "TemplateFile.h"
 #include "TemplateVariable.h"
 #include "tmplt.h"
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -157,4 +158,13 @@ void TemplateEngine::interactiveConfigureVariable(TemplateVariable &variable) {
     std::cout << RED << "Invalid type. Keeping current type." << RESET << "\n";
   }
 }
+
+void TemplateEngine::interactiveConfigureFile(TemplateFile &file) {
+  std::cout
+      << CYAN
+      << "Enter the desired relative file path for the generated copy of '"
+      << file.relativePath << "': ";
+  std::getline(std::cin, file.relativePath);
+}
+
 } // namespace tmplt

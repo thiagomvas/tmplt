@@ -15,5 +15,6 @@ public:
   createMultipleFilesTemplate(const std::vector<std::string> &filePaths);
 
   void interactiveConfigureVariable(tmplt::TemplateVariable &variable);
+  void interactiveConfigureFile(tmplt::TemplateFile &file);
 };
 } // namespace tmplt

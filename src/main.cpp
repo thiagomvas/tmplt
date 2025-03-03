@@ -100,6 +100,10 @@ void handleCreate(const CLI::ParsedArgs &args) {
     engine.interactiveConfigureVariable(var.second);
   }
 
+  for (auto &file : tmpl->files) {
+    engine.interactiveConfigureFile(file);
+  }
+
   std::cout << tmplt::GREEN << "Template created successfully: " << tmplt::RESET
             << std::endl;
 
