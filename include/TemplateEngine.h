@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Template.h"
 #include "TemplateVariable.h"
 #include <string>
 #include <unordered_map>
@@ -8,5 +9,7 @@ class TemplateEngine {
 public:
   std::unordered_map<std::string, TemplateVariable>
   findVariablesInBuffer(const std::string &buffer);
+
+  Template createSingleFileTemplate(const std::string &filePath);
 };
 } // namespace tmplt
