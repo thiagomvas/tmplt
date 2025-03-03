@@ -1,22 +1,49 @@
 
 #pragma once
-#include "Template.h"
-#include "TemplateEngine.h"
+
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class CLI {
 public:
-  CLI(tmplt::TemplateEngine &engine);
+  enum class OptionType { Boolean, String };
 
-  void printUsage() const;
-  void run(int argc, char *argv[]);
+  struct Option {
+    OptionType type;
+    std::string description;
+    std::string shortForm;
+  };
+
+  struct Argument {
+    std::string name;
+    std::string description;
+  };
+
+  struct Command {
+    std::string description;
+    std::unordered_map<std::string, Option> options;
+    std::vector<Argument> arguments;
+  };
+
+  struct ParsedArgs {
+    std::string command;
+    std::unordered_map<std::string, std::string> options;
+    std::vector<std::string> arguments;
+  };
+
+  static void registerCommand(const std::string &name,
+                              const std::string &description);
+  static void registerOption(const std::string &command,
+                             const std::string &longName, OptionType type,
+                             const std::string &description,
+                             const std::string &shortName = "");
+  static void registerArgument(const std::string &command,
+                               const std::string &name,
+                               const std::string &description);
+  static ParsedArgs parse(int argc, char *argv[]);
 
 private:
-  tmplt::TemplateEngine &engine;
-
-  void handleCreate(const std::vector<std::string> &args);
-  void handleApply(const std::vector<std::string> &args);
-  void handleList();
-  void configureVariable(tmplt::TemplateVariable &variable);
+  static std::unordered_map<std::string, Command> registeredCommands;
 };

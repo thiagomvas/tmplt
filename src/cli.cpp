@@ -2,117 +2,141 @@
 #include "cli.h"
 #include <iostream>
 
-const std::string RESET = "\033[0m";
-const std::string RED = "\033[31m";
-const std::string GREEN = "\033[32m";
-const std::string YELLOW = "\033[33m";
-const std::string CYAN = "\033[36m";
-const std::string MAGENTA = "\033[35m";
+std::unordered_map<std::string, CLI::Command> CLI::registeredCommands;
 
-CLI::CLI(tmplt::TemplateEngine &engine) : engine(engine) {}
-
-void CLI::printUsage() const {
-  std::cout
-      << CYAN << "Usage:\n"
-      << RESET
-      << "  tmpl create <file>              Create a template from a file\n"
-      << "  tmpl apply <template> <output>  Apply a template\n"
-      << "  tmpl list                       List stored templates\n"
-      << "  tmpl --help                     Show this help message\n";
+void CLI::registerCommand(const std::string &name,
+                          const std::string &description) {
+  registeredCommands[name] = Command{description, {}, {}};
 }
 
-void CLI::run(int argc, char *argv[]) {
+void CLI::registerOption(const std::string &command,
+                         const std::string &longName, OptionType type,
+                         const std::string &description,
+                         const std::string &shortName) {
+  if (registeredCommands.count(command) == 0) {
+    throw std::runtime_error("Cannot register option for unknown command: " +
+                             command);
+  }
+  registeredCommands[command].options[longName] = {type, description,
+                                                   shortName};
+}
+
+void CLI::registerArgument(const std::string &command, const std::string &name,
+                           const std::string &description) {
+  if (registeredCommands.count(command) == 0) {
+    throw std::runtime_error("Cannot register argument for unknown command: " +
+                             command);
+  }
+  registeredCommands[command].arguments.push_back({name, description});
+}
+
+CLI::ParsedArgs CLI::parse(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cerr << RED << "Error: No command provided.\n" << RESET;
-    printUsage();
-    return;
+    throw std::runtime_error("No command provided.");
   }
 
   std::string command = argv[1];
-  std::vector<std::string> args(argv + 2, argv + argc);
 
-  if (command == "create") {
-    handleCreate(args);
-  } else if (command == "apply") {
-    handleApply(args);
-  } else if (command == "list") {
-    handleList();
-  } else if (command == "--help" || command == "-h") {
-    printUsage();
-  } else {
-    std::cerr << RED << "Error: Unknown command '" << command << "'.\n"
-              << RESET;
-    printUsage();
-  }
-}
-
-void CLI::handleCreate(const std::vector<std::string> &args) {
-  if (args.empty()) {
-    std::cerr << RED << "Error: No file provided.\n" << RESET;
-    return;
+  // Handle global help request (e.g., tmplt -h or tmplt --help)
+  if (command == "-h" || command == "--help") {
+    std::cout << "Available commands:\n";
+    for (const auto &[cmd, info] : registeredCommands) {
+      std::cout << "  " << cmd << " - " << info.description << "\n";
+    }
+    exit(0);
   }
 
-  std::string name, description;
-
-  std::cout << CYAN << "Enter template name: " << RESET;
-  std::getline(std::cin, name);
-
-  std::cout << CYAN << "Enter template description: " << RESET;
-  std::getline(std::cin, description);
-
-  auto tmpl = engine.createSingleFileTemplate(args[0]);
-  tmpl.name = name;
-  tmpl.description = description;
-
-  for (auto &pair : tmpl.variables) {
-    configureVariable(pair.second);
+  // Validate command
+  if (registeredCommands.find(command) == registeredCommands.end()) {
+    throw std::runtime_error("Unknown command: " + command);
   }
 
-  std::cout << GREEN << "Template created successfully:\n" << RESET;
-  std::cout << tmpl.serialize() << std::endl;
-}
+  const Command &cmd = registeredCommands[command];
 
-void CLI::handleApply(const std::vector<std::string> &args) {
-  if (args.size() < 2) {
-    std::cerr << RED << "Error: Missing arguments for apply.\n" << RESET;
-    return;
+  // Check if help is requested for a specific command
+  if (argc > 2 &&
+      (std::string(argv[2]) == "-h" || std::string(argv[2]) == "--help")) {
+    std::cout << "Usage: tmplt " << command << " [OPTIONS] [ARGUMENTS]\n\n";
+    std::cout << cmd.description << "\n\n";
+
+    if (!cmd.options.empty()) {
+      std::cout << "Options:\n";
+      for (const auto &[longOpt, opt] : cmd.options) {
+        std::cout << "  --" << longOpt;
+        if (!opt.shortForm.empty()) {
+          std::cout << ", -" << opt.shortForm;
+        }
+        std::cout << " ("
+                  << (opt.type == OptionType::String ? "string" : "flag")
+                  << ") - " << opt.description << "\n";
+      }
+      std::cout << "\n";
+    }
+
+    if (!cmd.arguments.empty()) {
+      std::cout << "Arguments:\n";
+      for (const auto &arg : cmd.arguments) {
+        std::cout << "  " << arg.name << " - " << arg.description << "\n";
+      }
+      std::cout << "\n";
+    }
+
+    exit(0);
   }
 
-  // Placeholder for applying a template
-  std::cout << YELLOW << "Applying template " << args[0] << " to " << args[1]
-            << "\n"
-            << RESET;
-}
+  ParsedArgs result;
+  result.command = command;
 
-void CLI::handleList() {
-  std::cout << MAGENTA << "Listing available templates...\n" << RESET;
-}
+  for (int i = 2; i < argc; ++i) {
+    std::string arg = argv[i];
 
-void CLI::configureVariable(tmplt::TemplateVariable &variable) {
-  std::cout << CYAN << "Configuring variable: " << variable.name << RESET
-            << "\n";
+    if (arg.rfind("--", 0) == 0) { // Long option
+      std::string key = arg.substr(2);
 
-  // Modify description
-  std::string newDescription;
-  std::cout << CYAN << "Current description: " << variable.description << "\n";
-  std::cout << CYAN
-            << "Enter new description (leave empty to keep current): " << RESET;
-  std::getline(std::cin, newDescription);
-  if (!newDescription.empty()) {
-    variable.description = newDescription;
+      if (cmd.options.count(key) == 0) {
+        throw std::runtime_error("Unknown option: --" + key);
+      }
+
+      if (cmd.options.at(key).type == OptionType::String) {
+        if (i + 1 < argc) {
+          result.options[key] =
+              argv[++i]; // Take the next argument as the value
+        } else {
+          throw std::runtime_error("Option --" + key + " requires a value.");
+        }
+      } else {
+        result.options[key] = "true"; // Boolean flag
+      }
+
+    } else if (arg.rfind("-", 0) == 0 && arg.size() > 1) { // Short option
+      std::string shortKey = arg.substr(1);
+      bool found = false;
+
+      for (const auto &[longOpt, option] : cmd.options) {
+        if (option.shortForm == shortKey) {
+          found = true;
+          if (option.type == OptionType::String) {
+            if (i + 1 < argc) {
+              result.options[longOpt] = argv[++i];
+            } else {
+              throw std::runtime_error("Option -" + shortKey +
+                                       " requires a value.");
+            }
+          } else {
+            result.options[longOpt] = "true";
+          }
+          break;
+        }
+      }
+
+      if (!found) {
+        throw std::runtime_error("Unknown option: -" + shortKey);
+      }
+
+    } else { // Positional argument
+      result.arguments.push_back(arg);
+    }
   }
 
-  // Modify type
-  std::cout << CYAN << "Current type: " << static_cast<int>(variable.type)
-            << "\n";
-  std::cout << CYAN << "Enter new type (1: Text, 2: Bool, 3: Enum): " << RESET;
-  int newType;
-  std::cin >> newType;
-  std::cin.ignore(); // to discard the newline character
-
-  if (newType > 0 && newType <= 3) {
-    variable.type = static_cast<tmplt::VariableType>(newType);
-  } else {
-    std::cout << RED << "Invalid type. Keeping current type." << RESET << "\n";
-  }
+  return result;
 }
