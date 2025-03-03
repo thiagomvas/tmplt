@@ -71,12 +71,9 @@ void handleCreate(const CLI::ParsedArgs &args) {
     if (args.arguments.size() == 1) {
       tmpl = engine.createSingleFileTemplate(args.arguments[0]);
     } else {
-      // Multiple files
-      std::cout << "Multiple files provided: ";
-      for (const auto &file : args.arguments) {
-        std::cout << file << " ";
-      }
-      std::cout << std::endl;
+      std::cout << tmplt::MAGENTA << "Creating template with "
+                << args.arguments.size() << " files" << std::endl;
+      tmpl = engine.createMultipleFilesTemplate(args.arguments);
     }
   } else if (hasDirectory) {
     if (args.arguments.size() == 1) {

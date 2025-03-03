@@ -11,6 +11,8 @@ public:
   findVariablesInBuffer(const std::string &buffer);
 
   Template createSingleFileTemplate(const std::string &filePath);
+  Template
+  createMultipleFilesTemplate(const std::vector<std::string> &filePaths);
 
   void interactiveConfigureVariable(tmplt::TemplateVariable &variable);
 };
