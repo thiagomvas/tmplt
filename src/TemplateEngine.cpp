@@ -1,11 +1,12 @@
 #include "TemplateEngine.h"
 #include "Template.h"
 #include "TemplateVariable.h"
+#include "tmplt.h"
 #include <fstream>
+#include <iostream>
 #include <regex>
 #include <string>
 #include <unordered_map>
-
 namespace tmplt {
 
 std::unordered_map<std::string, TemplateVariable>
@@ -66,4 +67,32 @@ Template TemplateEngine::createSingleFileTemplate(const std::string &filePath) {
   return tmpl;
 }
 
+void TemplateEngine::interactiveConfigureVariable(TemplateVariable &variable) {
+  std::cout << CYAN << "Configuring variable: " << variable.name << RESET
+            << "\n";
+
+  // Modify description
+  std::string newDescription;
+  std::cout << CYAN << "Current description: " << variable.description << "\n";
+  std::cout << CYAN
+            << "Enter new description (leave empty to keep current): " << RESET;
+  std::getline(std::cin, newDescription);
+  if (!newDescription.empty()) {
+    variable.description = newDescription;
+  }
+
+  // Modify type
+  std::cout << CYAN << "Current type: " << static_cast<int>(variable.type)
+            << "\n";
+  std::cout << CYAN << "Enter new type (1: Text, 2: Bool, 3: Enum): " << RESET;
+  int newType;
+  std::cin >> newType;
+  std::cin.ignore(); // to discard the newline character
+
+  if (newType > 0 && newType <= 3) {
+    variable.type = static_cast<tmplt::VariableType>(newType);
+  } else {
+    std::cout << RED << "Invalid type. Keeping current type." << RESET << "\n";
+  }
+}
 } // namespace tmplt

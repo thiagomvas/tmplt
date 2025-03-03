@@ -11,5 +11,7 @@ public:
   findVariablesInBuffer(const std::string &buffer);
 
   Template createSingleFileTemplate(const std::string &filePath);
+
+  void interactiveConfigureVariable(tmplt::TemplateVariable &variable);
 };
 } // namespace tmplt
