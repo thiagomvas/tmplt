@@ -1,7 +1,10 @@
+#include "Template.h"
 #include "TemplateEngine.h"
 #include "cli.h"
+#include "tmplt.h"
 #include <filesystem>
 #include <iostream>
+#include <optional>
 
 namespace fs = std::filesystem;
 void handleGenerate(const CLI::ParsedArgs &args) {
@@ -33,6 +36,8 @@ void handleGenerate(const CLI::ParsedArgs &args) {
 void handleCreate(const CLI::ParsedArgs &args) {
   bool hasFile = false;
   bool hasDirectory = false;
+  tmplt::TemplateEngine engine;
+  std::optional<tmplt::Template> tmpl;
 
   // Loop through each argument to check if it's a file or directory
   for (const auto &arg : args.arguments) {
@@ -64,8 +69,7 @@ void handleCreate(const CLI::ParsedArgs &args) {
 
   if (hasFile) {
     if (args.arguments.size() == 1) {
-      // One file
-      std::cout << "One file provided: " << args.arguments[0] << std::endl;
+      tmpl = engine.createSingleFileTemplate(args.arguments[0]);
     } else {
       // Multiple files
       std::cout << "Multiple files provided: ";
@@ -84,6 +88,25 @@ void handleCreate(const CLI::ParsedArgs &args) {
   } else {
     std::cout << "Error: No valid files or directories provided." << std::endl;
   }
+
+  std::string input;
+
+  std::cout << tmplt::MAGENTA << "Template Name:" << tmplt::RESET;
+  std::getline(std::cin, input);
+  tmpl->name = input;
+
+  std::cout << tmplt::MAGENTA << "Template description: " << tmplt::RESET;
+  std::getline(std::cin, input);
+  tmpl->description = input;
+
+  for (auto &var : tmpl->variables) {
+    engine.interactiveConfigureVariable(var.second);
+  }
+
+  std::cout << tmplt::GREEN << "Template created successfully: " << tmplt::RESET
+            << std::endl;
+
+  std::cout << tmpl->serialize() << std::endl;
 }
 int main(int argc, char *argv[]) {
   // Register commands
