@@ -4,11 +4,14 @@
 #include "TemplateVariable.h"
 #include "tmplt.h"
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+
+namespace fs = std::filesystem;
 namespace tmplt {
 std::vector<std::string>
 extractKeys(const std::unordered_map<std::string, TemplateVariable> &map) {
@@ -246,4 +249,169 @@ void TemplateEngine::interactiveConfigureFile(TemplateFile &file) {
   std::getline(std::cin, file.relativePath);
 }
 
+void TemplateEngine::interactiveGenerateTemplate(
+    const tmplt::Template &tmpl, const std::string &targetPath) {
+
+  // Configure variable values
+  std::unordered_map<std::string, std::string> varValueMap;
+
+  for (const auto &var : tmpl.variables) {
+    std::string buffer;
+    switch (var.second.type) {
+    case tmplt::VariableType::Text:
+      std::cout << CYAN << "Enter value for '" << var.second.name
+                << "' (default: '"
+                << (var.second.defaultValue.value_or("Not Set"))
+                << "'): " << RESET;
+      std::getline(std::cin, buffer);
+
+      // Use default if input is empty
+      if (buffer.empty()) {
+        buffer = var.second.defaultValue.value_or("Not Set");
+      }
+
+      varValueMap[var.second.name] = buffer;
+      break;
+
+    case tmplt::VariableType::Bool:
+      std::cout << CYAN << "Enter value for '" << var.second.name
+                << "' (true/false, default: '"
+                << (var.second.trueValue.value_or("Not Set"))
+                << "'): " << RESET;
+      std::getline(std::cin, buffer);
+
+      // Check for empty input and use default if necessary
+      if (buffer.empty()) {
+        buffer =
+            var.second.trueValue.value_or("false"); // Use 'false' as a fallback
+      }
+
+      // Normalize to lower case for comparison
+      std::transform(buffer.begin(), buffer.end(), buffer.begin(), ::tolower);
+      if (buffer == "true" || buffer == "t" || buffer == "1") {
+        varValueMap[var.second.name] = var.second.trueValue.value_or("");
+      } else if (buffer == "false" || buffer == "f" || buffer == "0") {
+        varValueMap[var.second.name] = var.second.falseValue.value_or("");
+      } else {
+        std::cout << RED << "Invalid value. Expected 'true/t/1' or 'false/f/0'."
+                  << RESET << "\n";
+        continue;
+      }
+      break;
+
+    case tmplt::VariableType::Enum:
+      std::cout << CYAN << "Enter value for '" << var.second.name
+                << "' (choose from available options): " << RESET;
+
+      // Display enum map options
+      if (!var.second.enumMap.empty()) {
+        std::cout << CYAN << "Available options: " << RESET;
+        for (const auto &enumPair : var.second.enumMap) {
+          std::cout << "'" << enumPair.first << "' -> " << enumPair.second
+                    << ", ";
+        }
+        std::cout << "\n";
+      }
+
+      std::getline(std::cin, buffer);
+
+      // If empty, use the first available value in the enumMap
+      if (buffer.empty() && !var.second.enumMap.empty()) {
+        buffer =
+            var.second.enumMap.begin()->first; // Default to the first enum key
+      }
+
+      // Validate the user input against the available enum keys
+      if (var.second.enumMap.find(buffer) != var.second.enumMap.end()) {
+        varValueMap[var.second.name] = var.second.enumMap.find(buffer)->second;
+      } else {
+        std::cout
+            << RED
+            << "Invalid option. Please choose a valid option from the list."
+            << RESET << "\n";
+        continue; // If invalid, prompt again
+      }
+      break;
+
+    default:
+      std::cout << RED << "Unsupported variable type." << RESET << "\n";
+      break;
+    }
+  }
+
+  // Log mappings
+  for (const auto &pair : varValueMap) {
+    std::cout << pair.first << "=" << pair.second << std::endl;
+  }
+
+  // Create files
+  generateFiles(tmpl, targetPath, varValueMap);
+
+  std::cout << CYAN << "Template generated at: " << targetPath << RESET << "\n";
+}
+
+void TemplateEngine::generateFiles(
+    const tmplt::Template &tmpl, const std::string &targetPath,
+    const std::unordered_map<std::string, std::string> &variableReplacements) {
+
+  // Iterate through all files in the template
+  for (const auto &file : tmpl.files) {
+    std::string relativePath = file.relativePath;
+
+    // Replace variables in the file path using the provided mapping
+    for (const auto &var : variableReplacements) {
+      std::string varPattern = "${{" + var.first + "}}$";
+      size_t pos = 0;
+
+      // Replace occurrences of the variable in the file path with the
+      // replacement value
+      while ((pos = relativePath.find(varPattern, pos)) != std::string::npos) {
+        relativePath.replace(pos, varPattern.length(), var.second);
+        pos += var.second.length();
+      }
+    }
+
+    // Generate the full file path by combining targetPath and relativePath
+    fs::path fullFilePath = fs::path(targetPath) / relativePath;
+
+    // Ensure the directory exists
+    fs::create_directories(fullFilePath.parent_path());
+
+    // Read the content from the source file
+    std::ifstream sourceFile(file.contentPath);
+    if (!sourceFile.is_open()) {
+      std::cerr << RED << "Error opening source file: " << file.contentPath
+                << RESET << "\n";
+      continue;
+    }
+
+    std::stringstream contentStream;
+    contentStream << sourceFile.rdbuf();
+    std::string fileContent = contentStream.str();
+
+    // Replace variables in the content of the file using the provided mapping
+    for (const auto &var : variableReplacements) {
+      std::string varPattern = "${{" + var.first + "}}$";
+      size_t pos = 0;
+
+      // Replace occurrences of the variable in the content with the replacement
+      // value
+      while ((pos = fileContent.find(varPattern, pos)) != std::string::npos) {
+        fileContent.replace(pos, varPattern.length(), var.second);
+        pos += var.second.length();
+      }
+    }
+
+    // Write the content to the full file path
+    std::ofstream outFile(fullFilePath);
+    if (outFile.is_open()) {
+      outFile << fileContent; // Write the modified content to the file
+      outFile.close();
+      std::cout << CYAN << "Created file at: " << fullFilePath << RESET << "\n";
+    } else {
+      std::cerr << RED << "Error creating file at: " << fullFilePath << RESET
+                << "\n";
+    }
+  }
+}
 } // namespace tmplt

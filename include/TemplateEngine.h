@@ -16,5 +16,11 @@ public:
 
   void interactiveConfigureVariable(tmplt::TemplateVariable &variable);
   void interactiveConfigureFile(tmplt::TemplateFile &file);
+
+  void interactiveGenerateTemplate(const tmplt::Template &tmpl,
+                                   const std::string &targetPath);
+  void generateFiles(
+      const Template &tmpl, const std::string &targetPath,
+      const std::unordered_map<std::string, std::string> &variableReplacements);
 };
 } // namespace tmplt

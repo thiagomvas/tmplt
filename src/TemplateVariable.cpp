@@ -1,5 +1,6 @@
 #include "TemplateVariable.h"
 #include "tmplt.h"
+#include <iostream>
 #include <sstream>
 namespace tmplt {
 
@@ -129,7 +130,7 @@ TemplateVariable TemplateVariable::deserialize(const std::string &buffer) {
 
   // Read trueValue and falseValue for boolean type
   if (tv.type == VariableType::Bool) {
-    while (std::getline(stream, line)) {
+    do {
       if (line.rfind("trueValue: ", 0) == 0) {
         tv.trueValue = line.substr(11);
       } else if (line.rfind("falseValue: ", 0) == 0) {
@@ -137,19 +138,21 @@ TemplateVariable TemplateVariable::deserialize(const std::string &buffer) {
       } else {
         break;
       }
-    }
+    } while (std::getline(stream, line));
   }
 
   // Read enumMap for Enum type
   if (tv.type == VariableType::Enum) {
-    if (std::getline(stream, line) && line == "enumMap:") {
+    if (line == "enumMap:") {
       while (std::getline(stream, line)) {
-        if (line.empty())
+        // Break on empty or non-indented line
+        std::cout << "ENUMLINE=" << line << std::endl;
+        if (line.empty() || line.find_first_not_of("  ") == std::string::npos)
           break;
 
         size_t colonPos = line.find(": ");
         if (colonPos != std::string::npos) {
-          std::string key = line.substr(0, colonPos);
+          std::string key = line.substr(2, colonPos - 2);
           std::string value = line.substr(colonPos + 2);
           tv.enumMap[key] = value;
         }

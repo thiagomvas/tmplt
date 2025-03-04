@@ -35,17 +35,57 @@ void ensureDirectoriesExist() {
   fs::create_directories(templatesPath);
 }
 
+#include "TemplateEngine.h" // Assuming you have a header file for your TemplateEngine class
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <unordered_map>
+
+namespace fs = std::filesystem;
+
 void handleGenerate(const CLI::ParsedArgs &args) {
   std::string templateName = args.arguments[0];
 
-  tmplt::TemplateEngine engine;
-  auto tmpl = engine.createSingleFileTemplate("/home/thiagomv/test.txt");
+  // Define the path to your templates directory and the template file
+  auto templatePath =
+      getAppDataPath() / "tmplt" / "templates" / (templateName + ".template");
 
-  if (args.options.count("interactive") > 0) {
-    std::cout << "Creating template interactively" << std::endl;
+  // Check if the template file exists
+  if (!fs::exists(templatePath)) {
+    std::cerr << "Template file not found: " << templatePath << std::endl;
     return;
   }
 
+  // Read the contents of the template file into a buffer
+  std::ifstream templateFile(templatePath);
+  if (!templateFile.is_open()) {
+    std::cerr << "Error opening template file: " << templatePath << std::endl;
+    return;
+  }
+
+  std::stringstream buffer;
+  buffer << templateFile.rdbuf();
+  std::string templateBuffer = buffer.str();
+
+  // Deserialize the template from the buffer
+  tmplt::Template tmpl;
+  try {
+    tmpl = tmplt::Template::deserialize(templateBuffer);
+  } catch (const std::exception &e) {
+    std::cerr << "Error deserializing template: " << e.what() << std::endl;
+    return;
+  }
+
+  // Initialize the template engine
+  tmplt::TemplateEngine engine;
+
+  // If the "interactive" flag is present, we will handle it later
+  if (args.options.count("interactive") > 0) {
+    engine.interactiveGenerateTemplate(tmpl, fs::current_path());
+    return;
+  }
+
+  // Iterate over arguments and set variable values for the template
   for (int i = 1; i < args.arguments.size(); i++) {
     std::string arg = args.arguments[i];
     size_t pos = arg.find("=");
@@ -56,9 +96,17 @@ void handleGenerate(const CLI::ParsedArgs &args) {
     std::string name = arg.substr(0, pos);
     std::string value = arg.substr(pos + 1);
 
-    if (tmpl.variables.contains(name))
+    // Check if the variable exists in the template and set its value
+    if (tmpl.variables.contains(name)) {
       std::cout << "Set '" << name << "' to '" << value << "'" << std::endl;
+      tmpl.variables[name] =
+          value; // Assuming you have a map or method to set variable values
+    }
   }
+
+  // You can now proceed with generating files using the modified `tmpl`
+  // engine.generateFiles(tmpl, targetPath, ...);  // Proceed with generating
+  // files
 }
 
 void processArguments(const CLI::ParsedArgs &args, bool &hasFile,
