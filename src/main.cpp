@@ -33,82 +33,92 @@ void handleGenerate(const CLI::ParsedArgs &args) {
   }
 }
 
-void handleCreate(const CLI::ParsedArgs &args) {
-  bool hasFile = false;
-  bool hasDirectory = false;
-  tmplt::TemplateEngine engine;
-  std::optional<tmplt::Template> tmpl;
-
-  // Loop through each argument to check if it's a file or directory
+void processArguments(const CLI::ParsedArgs &args, bool &hasFile,
+                      bool &hasDirectory) {
   for (const auto &arg : args.arguments) {
     fs::path path(arg);
-
-    if (fs::exists(path)) {
-      if (fs::is_regular_file(path)) {
-        // It's a file
-        hasFile = true;
-      } else if (fs::is_directory(path)) {
-        // It's a directory
-        hasDirectory = true;
-      } else {
-        std::cout << "Unknown type: " << arg << std::endl;
-        return;
-      }
-    } else {
+    if (!fs::exists(path)) {
       std::cout << "Path does not exist: " << arg << std::endl;
       return;
     }
+    if (fs::is_regular_file(path)) {
+      hasFile = true;
+    } else if (fs::is_directory(path)) {
+      hasDirectory = true;
+    } else {
+      std::cout << "Unknown type: " << arg << std::endl;
+      return;
+    }
   }
+}
 
-  // Check validation conditions
+std::optional<tmplt::Template> createTemplate(const CLI::ParsedArgs &args,
+                                              tmplt::TemplateEngine &engine,
+                                              bool hasFile, bool hasDirectory) {
   if (hasFile && hasDirectory) {
     std::cout << "Error: Cannot mix files and directories in the arguments."
               << std::endl;
-    return;
+    return std::nullopt;
   }
-
   if (hasFile) {
-    if (args.arguments.size() == 1) {
-      tmpl = engine.createSingleFileTemplate(args.arguments[0]);
-    } else {
-      std::cout << tmplt::MAGENTA << "Creating template with "
-                << args.arguments.size() << " files" << std::endl;
-      tmpl = engine.createMultipleFilesTemplate(args.arguments);
-    }
+    return (args.arguments.size() == 1)
+               ? engine.createSingleFileTemplate(args.arguments[0])
+               : engine.createMultipleFilesTemplate(args.arguments);
   } else if (hasDirectory) {
     if (args.arguments.size() == 1) {
-      // One directory
       std::cout << "One directory provided: " << args.arguments[0] << std::endl;
     } else {
       std::cout << "Error: Only one directory is allowed." << std::endl;
+      return std::nullopt;
     }
-  } else {
-    std::cout << "Error: No valid files or directories provided." << std::endl;
   }
+  std::cout << "Error: No valid files or directories provided." << std::endl;
+  return std::nullopt;
+}
 
+void configureTemplate(tmplt::Template &tmpl, tmplt::TemplateEngine &engine) {
   std::string input;
-
   std::cout << tmplt::MAGENTA << "Template Name:" << tmplt::RESET;
   std::getline(std::cin, input);
-  tmpl->name = input;
+  tmpl.name = input;
 
   std::cout << tmplt::MAGENTA << "Template description: " << tmplt::RESET;
   std::getline(std::cin, input);
-  tmpl->description = input;
+  tmpl.description = input;
 
-  for (auto &var : tmpl->variables) {
+  for (auto &var : tmpl.variables) {
     engine.interactiveConfigureVariable(var.second);
   }
-
-  for (auto &file : tmpl->files) {
+  for (auto &file : tmpl.files) {
     engine.interactiveConfigureFile(file);
+
+    auto variables = engine.findVariablesInBuffer(file.relativePath);
+    for (auto &var : variables) {
+      if (!tmpl.variables.contains(var.first)) {
+        engine.interactiveConfigureVariable(var.second);
+        tmpl.variables.insert(var);
+      }
+    }
   }
+}
+
+void handleCreate(const CLI::ParsedArgs &args) {
+  bool hasFile = false, hasDirectory = false;
+  tmplt::TemplateEngine engine;
+
+  processArguments(args, hasFile, hasDirectory);
+  auto tmpl = createTemplate(args, engine, hasFile, hasDirectory);
+
+  if (!tmpl)
+    return;
+
+  configureTemplate(*tmpl, engine);
 
   std::cout << tmplt::GREEN << "Template created successfully: " << tmplt::RESET
             << std::endl;
-
   std::cout << tmpl->serialize() << std::endl;
 }
+
 int main(int argc, char *argv[]) {
   // Register commands
 
