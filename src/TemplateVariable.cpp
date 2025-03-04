@@ -24,6 +24,8 @@ std::string TemplateVariable::serialize() const {
   result << "name: " << name << "\n";
   result << "description: " << description << "\n";
   result << "type: " << std::to_string(static_cast<int>(type)) << "\n";
+
+  // Serialize the condition if it exists
   if (condition) {
     result << "condition:\n";
     result << "  variableName: " << condition->variableName << "\n";
@@ -31,6 +33,30 @@ std::string TemplateVariable::serialize() const {
     result << "  conditionType: "
            << std::to_string(static_cast<int>(condition->type)) << "\n";
   }
+
+  // Serialize trueValue and falseValue for boolean type
+  if (type == VariableType::Bool) {
+    if (trueValue) {
+      result << "trueValue: " << *trueValue << "\n";
+    }
+    if (falseValue) {
+      result << "falseValue: " << *falseValue << "\n";
+    }
+  }
+
+  // Serialize enumMap for Enum type
+  if (type == VariableType::Enum) {
+    result << "enumMap:\n";
+    for (const auto &pair : enumMap) {
+      result << "  " << pair.first << ": " << pair.second << "\n";
+    }
+  }
+
+  // Serialize defaultValue for Text type
+  if (type == VariableType::Text && defaultValue) {
+    result << "defaultValue: " << *defaultValue << "\n";
+  }
+
   return result.str();
 }
 
@@ -99,6 +125,47 @@ TemplateVariable TemplateVariable::deserialize(const std::string &buffer) {
     }
 
     tv.condition = condition;
+  }
+
+  // Read trueValue and falseValue for boolean type
+  if (tv.type == VariableType::Bool) {
+    while (std::getline(stream, line)) {
+      if (line.rfind("trueValue: ", 0) == 0) {
+        tv.trueValue = line.substr(11);
+      } else if (line.rfind("falseValue: ", 0) == 0) {
+        tv.falseValue = line.substr(12);
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Read enumMap for Enum type
+  if (tv.type == VariableType::Enum) {
+    if (std::getline(stream, line) && line == "enumMap:") {
+      while (std::getline(stream, line)) {
+        if (line.empty())
+          break;
+
+        size_t colonPos = line.find(": ");
+        if (colonPos != std::string::npos) {
+          std::string key = line.substr(0, colonPos);
+          std::string value = line.substr(colonPos + 2);
+          tv.enumMap[key] = value;
+        }
+      }
+    }
+  }
+
+  // Read defaultValue for Text type
+  if (tv.type == VariableType::Text) {
+    while (std::getline(stream, line)) {
+      if (line.rfind("defaultValue: ", 0) == 0) {
+        tv.defaultValue = line.substr(14);
+      } else {
+        break;
+      }
+    }
   }
 
   return tv;

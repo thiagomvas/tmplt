@@ -130,6 +130,7 @@ Template TemplateEngine::createMultipleFilesTemplate(
 
   return tmpl;
 }
+
 void TemplateEngine::interactiveConfigureVariable(TemplateVariable &variable) {
   std::cout << CYAN << "Configuring variable: " << variable.name << RESET
             << "\n";
@@ -157,6 +158,84 @@ void TemplateEngine::interactiveConfigureVariable(TemplateVariable &variable) {
   } else {
     std::cout << RED << "Invalid type. Keeping current type." << RESET << "\n";
   }
+
+  // Configure type-specific values
+  switch (variable.type) {
+  case tmplt::VariableType::Bool: {
+    // Modify trueValue
+    std::string newTrueValue;
+    std::cout << CYAN << "Current trueValue: "
+              << (variable.trueValue ? *variable.trueValue : "Not Set") << "\n";
+    std::cout << CYAN
+              << "Enter new trueValue (leave empty to keep current): " << RESET;
+    std::getline(std::cin, newTrueValue);
+    if (!newTrueValue.empty()) {
+      variable.trueValue = newTrueValue;
+    }
+
+    // Modify falseValue
+    std::string newFalseValue;
+    std::cout << CYAN << "Current falseValue: "
+              << (variable.falseValue ? *variable.falseValue : "Not Set")
+              << "\n";
+    std::cout << CYAN << "Enter new falseValue (leave empty to keep current): "
+              << RESET;
+    std::getline(std::cin, newFalseValue);
+    if (!newFalseValue.empty()) {
+      variable.falseValue = newFalseValue;
+    }
+    break;
+  }
+
+  case tmplt::VariableType::Text: {
+    // Modify defaultValue
+    std::string newDefaultValue;
+    std::cout << CYAN << "Current defaultValue: "
+              << (variable.defaultValue ? *variable.defaultValue : "Not Set")
+              << "\n";
+    std::cout << CYAN
+              << "Enter new defaultValue (leave empty to keep current): "
+              << RESET;
+    std::getline(std::cin, newDefaultValue);
+    if (!newDefaultValue.empty()) {
+      variable.defaultValue = newDefaultValue;
+    }
+    break;
+  }
+
+  case tmplt::VariableType::Enum: {
+    // Modify enumMap
+    std::string enumKey, enumValue;
+    char addMore = 'y';
+
+    while (addMore == 'y' || addMore == 'Y') {
+      std::cout << CYAN << "Enter enum key (leave empty to stop): " << RESET;
+      std::getline(std::cin, enumKey);
+
+      if (enumKey.empty()) {
+        break;
+      }
+
+      std::cout << CYAN << "Enter enum value: " << RESET;
+      std::getline(std::cin, enumValue);
+
+      variable.enumMap[enumKey] = enumValue;
+
+      std::cout << CYAN << "Add another enum mapping? (y/n): " << RESET;
+      std::cin >> addMore;
+      std::cin.ignore(); // to discard the newline character
+    }
+    break;
+  }
+
+  default:
+    std::cout << RED << "Unsupported type. No modifications made." << RESET
+              << "\n";
+    break;
+  }
+
+  std::cout << CYAN << "Configuration updated for variable: " << variable.name
+            << RESET << "\n";
 }
 
 void TemplateEngine::interactiveConfigureFile(TemplateFile &file) {
