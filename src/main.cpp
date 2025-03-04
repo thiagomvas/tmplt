@@ -3,10 +3,38 @@
 #include "cli.h"
 #include "tmplt.h"
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 
 namespace fs = std::filesystem;
+
+fs::path getAppDataPath() {
+#ifdef _WIN32
+  const char *appData = std::getenv("APPDATA");
+  if (appData) {
+    return fs::path(appData);
+  }
+#else
+  const char *home = std::getenv("HOME");
+  if (home) {
+    return fs::path(home) / ".config";
+  }
+#endif
+  throw std::runtime_error("Failed to determine app data directory");
+}
+
+void ensureDirectoriesExist() {
+  fs::path basePath = getAppDataPath() / "tmplt";
+  fs::path sourcesPath = basePath / "sources";
+  fs::path templatesPath = basePath / "templates";
+
+  fs::create_directories(basePath);
+  fs::create_directories(sourcesPath);
+  fs::create_directories(templatesPath);
+}
+
 void handleGenerate(const CLI::ParsedArgs &args) {
   std::string templateName = args.arguments[0];
 
@@ -114,14 +142,30 @@ void handleCreate(const CLI::ParsedArgs &args) {
 
   configureTemplate(*tmpl, engine);
 
-  std::cout << tmplt::GREEN << "Template created successfully: " << tmplt::RESET
-            << std::endl;
-  std::cout << tmpl->serialize() << std::endl;
+  auto tmpltFolder = getAppDataPath() / "tmplt";
+
+  // Create template file
+  auto filePath = tmpltFolder / "templates" / (tmpl->name + ".template");
+  std::ofstream output(filePath);
+  if (output) {
+    output << tmpl->serialize();
+    output.close();
+    std::cout << tmplt::GREEN << "Template created successfully at '"
+              << filePath << "'." << tmplt::RESET << std::endl;
+  } else {
+    throw std::runtime_error("Failed to create file at '" + filePath.string() +
+                             "'.");
+  }
 }
 
 int main(int argc, char *argv[]) {
-  // Register commands
-
+  // Register command
+  try {
+    ensureDirectoriesExist();
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   CLI::registerCommand("generate", "Generate new files from a template");
   CLI::registerArgument("generate", "template", "The template to generate");
   CLI::registerOption("generate", "interactive", CLI::OptionType::Boolean,

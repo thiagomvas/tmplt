@@ -77,8 +77,8 @@ Template TemplateEngine::createSingleFileTemplate(const std::string &filePath) {
   tmpl.variables = vars;
 
   TemplateFile f;
-  f.relativePath = filePath;
   f.variableNames = extractKeys(vars);
+  f.contentPath = filePath;
   tmpl.files.push_back(f);
 
   return tmpl;
@@ -163,7 +163,7 @@ void TemplateEngine::interactiveConfigureFile(TemplateFile &file) {
   std::cout
       << CYAN
       << "Enter the desired relative file path for the generated copy of '"
-      << file.relativePath << "': ";
+      << file.contentPath << "': ";
   std::getline(std::cin, file.relativePath);
 }
 
